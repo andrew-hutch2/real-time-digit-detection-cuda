@@ -73,8 +73,60 @@ class MSERDigitDetector:
         
         return weight
     
+    def extract_digit_region(self, frame, bbox):
+        """Extract the digit region from the frame with padding"""
+        x, y, w, h = bbox
+        
+        # Add some padding
+        padding = 5
+        x = max(0, x - padding)
+        y = max(0, y - padding)
+        w = min(frame.shape[1] - x, w + 2 * padding)
+        h = min(frame.shape[0] - y, h + 2 * padding)
+        
+        # Extract region
+        digit_roi = frame[y:y+h, x:x+w]
+        
+        return digit_roi
+    
+    def preprocess_digit(self, digit_roi):
+        """Preprocess a digit region to 28x28 format for the model"""
+        # Convert to grayscale if needed
+        if len(digit_roi.shape) == 3:
+            gray = cv2.cvtColor(digit_roi, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = digit_roi.copy()
+        
+        # Resize to 28x28
+        resized = cv2.resize(gray, (28, 28))
+        
+        # Invert colors (MNIST has white digits on black background)
+        inverted = cv2.bitwise_not(resized)
+        
+        # Normalize to [0, 1] range
+        normalized = inverted.astype(np.float32) / 255.0
+        
+        return normalized
+    
+    def save_digit_binary(self, digit_array, filename):
+        """Save preprocessed digit to binary format for CUDA inference"""
+        try:
+            # Flatten to 784 dimensions
+            flattened = digit_array.flatten()
+            
+            # Apply MNIST normalization (same as training)
+            mean, std = 0.1307, 0.3081
+            normalized = (flattened - mean) / std
+            
+            # Save as binary file
+            normalized.astype(np.float32).tofile(filename)
+            return True
+        except Exception as e:
+            print(f"Error saving digit: {e}")
+            return False
+    
     def detect_digits(self, frame):
-        """Detect digits in frame"""
+        """Detect digits in frame and return with preprocessed data"""
         # Preprocess frame
         processed = self.preprocess_frame(frame)
         
@@ -114,10 +166,16 @@ class MSERDigitDetector:
             # Calculate confidence based on region stability and border weight
             confidence = weight * 0.7 + 0.3  # Base confidence with weight influence
             
+            # Extract and preprocess digit for ML inference
+            digit_roi = self.extract_digit_region(frame, (x, y, w, h))
+            preprocessed_digit = self.preprocess_digit(digit_roi)
+            
             detections.append({
                 'bbox': (x, y, w, h),
                 'confidence': confidence,
-                'weight': weight
+                'weight': weight,
+                'digit_roi': digit_roi,
+                'preprocessed_digit': preprocessed_digit
             })
         
         # Remove duplicates using improved NMS
