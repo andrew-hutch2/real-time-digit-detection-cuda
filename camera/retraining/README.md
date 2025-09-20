@@ -1,6 +1,6 @@
 # Camera-Based Digit Recognition Retraining System
 
-This folder contains all the Python scripts for collecting training data from your camera and retraining the neural network model to improve accuracy for your specific preprocessing pipeline.
+This folder contains all the Python scripts for collecting training data from your camera and retraining the neural network model to improve accuracy for your specific preprocessing pipeline. This system integrates with the optimized camera recognition pipeline (`detectDigit_fast.py`) to collect high-quality training data.
 
 ## Scripts Overview
 
@@ -213,9 +213,10 @@ The scripts automatically handle relative paths and imports from the parent came
 - Ensure good lighting conditions
 
 **2. Poor detection quality**
-- Adjust MSER parameters in detectDigit.py
+- Adjust MSER parameters in detectDigit_fast.py
 - Improve lighting conditions
 - Use higher contrast backgrounds
+- Use the reset functionality ('r' key) in camera.py
 
 **3. Compilation errors**
 - Ensure CUDA toolkit is installed
@@ -250,10 +251,10 @@ After retraining, update your inference system to use the new model:
 
 ```bash
 # Copy retrained model to inference location
-cp bin/retrained_model_best.bin bin/trained_model_weights.bin
+cp bin/retrained_model_best.bin bin/retrained_model_best250epoch.bin
 
 # Test with new model
-make test-camera
+python3 camera.py
 ```
 
 ## Monitoring and Evaluation
@@ -329,7 +330,7 @@ make retrain-model
 make workflow-status
 
 # 7. Test the new model
-make test-camera
+python3 camera.py
 ```
 
-Your retrained model will be saved as `bin/retrained_model_best.bin` and should show improved accuracy on your camera data!
+Your retrained model will be saved as `bin/retrained_model_best.bin` and should show improved accuracy on your camera data! The camera system will automatically use the latest model weights.
