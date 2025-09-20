@@ -193,6 +193,14 @@ python3 camera.py
 - **Reset Capability**: Manual ('r' key) and automatic reset functionality
 - **Performance Monitoring**: Real-time FPS and accuracy metrics
 
+## 🎬 Demo Videos
+
+See the system in action:
+
+- [Example 1](assets/digitClassificationExample1.mp4)
+- [Example 2](assets/digitClassificationExample2.mp4)
+- [Example 3](assets/digitClassificationExample3.mp4)
+
 ## 🎮 Controls
 
 ### Camera Application
