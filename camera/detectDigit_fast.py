@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Aggressive MSER Digit Detection - Optimized for fast detection of new paper
-Very sensitive settings to catch digits as soon as they appear
+MSER Digit Detection - Optimized for fast detection
 """
 
 import cv2
@@ -10,7 +9,7 @@ import threading
 import time
 import queue
 
-class AggressiveMSERDigitDetector:
+class FastMSERDigitDetector:
     def __init__(self):
         # MSER parameters optimized for new content - more balanced
         self.mser = cv2.MSER_create(
@@ -19,17 +18,17 @@ class AggressiveMSERDigitDetector:
             max_area=120000,   # Standard maximum area
             max_variation=0.3, # Higher variation tolerance
             min_diversity=0.08, # Lower for more sensitivity
-            max_evolution=100,  # Faster evolution
+            max_evolution=200,  # Faster evolution
             area_threshold=1.01,
-            min_margin=0.002,   # Low margin
-            edge_blur_size=3    # Minimal blur
+            min_margin=0.003,   # Low margin
+            edge_blur_size=4    # Minimal blur
         )
         
         # More balanced detection parameters
         self.detection_scale = 0.5
         self.min_aspect_ratio = 0.15  # More reasonable
-        self.max_aspect_ratio = 6     # More reasonable
-        self.min_size = 12            # More reasonable minimum
+        self.max_aspect_ratio = 4     # More reasonable
+        self.min_size = 15            # More reasonable minimum
         self.max_size = 300           # More reasonable maximum
         
         # Border weighting threshold - deprioritizes edge regions
@@ -316,10 +315,10 @@ class AggressiveMSERDigitDetector:
         
         return filtered
 
-class AggressiveDigitDetectionCamera:
+class FastDigitDetectionCamera:
     def __init__(self, stream_url="http://192.168.1.100:8080/video"):
         self.stream_url = stream_url
-        self.detector = AggressiveMSERDigitDetector()
+        self.detector = FastMSERDigitDetector()
         
         # Threading
         self.frame_queue = queue.Queue(maxsize=2)
@@ -437,7 +436,7 @@ class AggressiveDigitDetectionCamera:
         return overlay
 
 if __name__ == "__main__":
-    camera = AggressiveDigitDetectionCamera()
+    camera = FastDigitDetectionCamera()
     camera.running = True
     
     # Start threads
