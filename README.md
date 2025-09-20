@@ -197,9 +197,14 @@ python3 camera.py
 
 See the system in action:
 
-- [Example 1](assets/digitClassificationExample1.mp4)
-- [Example 2](assets/digitClassificationExample2.mp4)
-- [Example 3](assets/digitClassificationExample3.mp4)
+
+https://github.com/user-attachments/assets/045e8b9a-2a98-4316-91e5-86caf4e21cd8
+
+
+https://github.com/user-attachments/assets/1f5abb35-ef3f-4ba7-a602-5fded76a2d3f
+
+
+https://github.com/user-attachments/assets/a5dbb7c6-4f08-472d-b004-9e2b540f48f3
 
 ## 🎮 Controls
 
