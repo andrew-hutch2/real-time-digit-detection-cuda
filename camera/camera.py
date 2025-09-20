@@ -192,7 +192,7 @@ class DigitRecognitionCamera:
                 return None
             
             # Run CUDA inference from the bin directory (where weights file is located)
-            cmd = [self.inference_binary, temp_file_path, "retrained_model_best.bin"]
+            cmd = [self.inference_binary, temp_file_path, "retrained_model_best150epoch.bin"]
             
             # Change to the bin directory where weights file is located
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.inference_timeout, cwd="../bin")

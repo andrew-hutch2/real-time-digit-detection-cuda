@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-MSER Digit Detection - Clean Implementation
-Focused on detection and drawing bounding boxes around digits
+Aggressive MSER Digit Detection - Optimized for fast detection of new paper
+Very sensitive settings to catch digits as soon as they appear
 """
 
 import cv2
@@ -10,55 +10,37 @@ import threading
 import time
 import queue
 
-class MSERDigitDetector:
+class AggressiveMSERDigitDetector:
     def __init__(self):
-        # MSER parameters optimized for small objects
+        # MSER parameters optimized for new content - more balanced
         self.mser = cv2.MSER_create(
-            delta=3,           # Lower for better small object detection
-            min_area=80,       # Reduced for tiny digits
-            max_area=120000,   # Increased for large digits
-            max_variation=0.2, # Lower for better stability
-            min_diversity=0.12, # Lower for more sensitive detection
-            max_evolution=200,
+            delta=2,           # Low for faster detection
+            min_area=60,       # Smaller minimum area
+            max_area=120000,   # Standard maximum area
+            max_variation=0.3, # Higher variation tolerance
+            min_diversity=0.08, # Lower for more sensitivity
+            max_evolution=100,  # Faster evolution
             area_threshold=1.01,
-            min_margin=0.003,
-            edge_blur_size=4   # Reduced for sharper edges
+            min_margin=0.002,   # Low margin
+            edge_blur_size=3    # Minimal blur
         )
         
-        # Detection parameters
+        # More balanced detection parameters
         self.detection_scale = 0.5
-        self.min_aspect_ratio = 0.15
-        self.max_aspect_ratio = 4
-        self.min_size = 15
-        self.max_size = 200
+        self.min_aspect_ratio = 0.15  # More reasonable
+        self.max_aspect_ratio = 6     # More reasonable
+        self.min_size = 12            # More reasonable minimum
+        self.max_size = 300           # More reasonable maximum
         
-        # Border weighting
+        # Border weighting threshold - deprioritizes edge regions
         self.border_weight_threshold = 0.3
-
-
-        """self.mser = cv2.MSER_create(
-            delta=2,           # Lower for better small object detection
-            min_area=60,       # Reduced for tiny digits
-            max_area=120000,   # Increased for large digits
-            max_variation=0.3, # Lower for better stability
-            min_diversity=0.05, # Lower for more sensitive detection
-            max_evolution=200,
-            area_threshold=1.01,
-            min_margin=0.005,
-            edge_blur_size=4   # Reduced for sharper edges
-        )
         
-        # Detection parameters
-        self.detection_scale = 0.5
-        self.min_aspect_ratio = 0.1
-        self.max_aspect_ratio = 400
-        self.min_size = 5
-        self.max_size = 200
-        # Border weighting
-        self.border_weight_threshold = 0.3"""
+        # Multiple detection methods
+        self.use_contours = False  # Disable for now to focus on MSER
+        self.use_mser = True
         
-    def preprocess_frame(self, frame):
-        """Preprocessing optimized for small object detection"""
+    def preprocess_frame_aggressive(self, frame):
+        """Preprocessing optimized for new content detection"""
         # Convert to grayscale
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
@@ -76,8 +58,52 @@ class MSERDigitDetector:
         
         return cleaned
     
+    def detect_contours(self, processed_frame, original_frame):
+        """Detect digits using contour analysis as backup"""
+        contours, _ = cv2.findContours(processed_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        detections = []
+        for contour in contours:
+            # Get bounding box
+            x, y, w, h = cv2.boundingRect(contour)
+            
+            # Filter by size
+            if w < self.min_size or h < self.min_size or w > self.max_size or h > self.max_size:
+                continue
+                
+            # Filter by aspect ratio
+            aspect_ratio = w / h
+            if aspect_ratio < self.min_aspect_ratio or aspect_ratio > self.max_aspect_ratio:
+                continue
+            
+            # Calculate area ratio
+            area = cv2.contourArea(contour)
+            bbox_area = w * h
+            area_ratio = area / bbox_area if bbox_area > 0 else 0
+            
+            # Filter by area ratio (should be reasonable for digits)
+            if area_ratio < 0.1 or area_ratio > 0.9:
+                continue
+            
+            # Calculate border weight (very lenient)
+            weight = self.calculate_border_weight(x, y, w, h, original_frame.shape)
+            if weight < self.border_weight_threshold:
+                continue
+            
+            # Calculate confidence
+            confidence = weight * 0.5 + area_ratio * 0.3 + 0.2
+            
+            detections.append({
+                'bbox': (x, y, w, h),
+                'confidence': confidence,
+                'weight': weight,
+                'method': 'contour'
+            })
+        
+        return detections
+    
     def calculate_border_weight(self, x, y, w, h, frame_shape):
-        """Calculate weight based on distance from borders"""
+        """Calculate weight based on distance from borders - deprioritizes edges"""
         frame_h, frame_w = frame_shape[:2]
         
         # Calculate distances from borders
@@ -90,6 +116,7 @@ class MSERDigitDetector:
         min_dist = min(dist_top, dist_bottom, dist_left, dist_right)
         
         # Calculate weight (higher for regions away from borders)
+        # This deprioritizes edge regions like the original detectDigit.py
         max_dist = min(frame_w, frame_h) / 2
         weight = min(1.0, min_dist / max_dist)
         
@@ -123,38 +150,25 @@ class MSERDigitDetector:
         resized = cv2.resize(gray, (28, 28))
         
         # Ensure MNIST format: white digits on black background
-        # First apply binary threshold to get clean black/white
         _, binary = cv2.threshold(resized, 127, 255, cv2.THRESH_BINARY)
         
-        # Check if we need to invert (if background is white and digits are black)
-        # Count pixels to determine which is background vs digit
+        # Check if we need to invert
         white_pixels = np.sum(binary == 255)
         black_pixels = np.sum(binary == 0)
         
-        if white_pixels > black_pixels:  # More white pixels = white background with black digits
-            # Invert to get black background with white digits (MNIST format)
+        if white_pixels > black_pixels:
             processed = cv2.bitwise_not(binary)
-        else:  # More black pixels = already black background with white digits
+        else:
             processed = binary
         
-        # Apply MNIST-style preprocessing: fade from white to gray
-        # Convert to float for processing
+        # Apply MNIST-style preprocessing
         processed_float = processed.astype(np.float32) / 255.0
-        
-        # Apply Gaussian blur to create MNIST-style fade effect
-        # This creates the characteristic white-to-gray fade around digit edges
         blurred = cv2.GaussianBlur(processed_float, (3, 3), 0.5)
+        enhanced = np.clip(blurred * 1.3, 0, 1)
         
-        # Enhance brightness to make digits whiter (more like MNIST)
-        # Apply contrast and brightness adjustment
-        enhanced = np.clip(blurred * 1.3, 0, 1)  # Increase brightness by 30%
-        
-        # Apply MNIST normalization: mean=0.1307, std=0.3081
-        # This matches the exact normalization used in MNIST training
+        # Apply MNIST normalization
         mean, std = 0.1307, 0.3081
         normalized = (enhanced - mean) / std
-        
-        # Clip values to reasonable range to prevent extreme outliers
         normalized = np.clip(normalized, -3.0, 3.0)
         
         return normalized
@@ -162,11 +176,7 @@ class MSERDigitDetector:
     def save_digit_binary(self, digit_array, filename):
         """Save preprocessed digit to binary format for CUDA inference"""
         try:
-            # Flatten to 784 dimensions
-            # Note: digit_array is already normalized with MNIST normalization
             flattened = digit_array.flatten()
-            
-            # Save as binary file (already in correct MNIST format)
             flattened.astype(np.float32).tofile(filename)
             return True
         except Exception as e:
@@ -174,65 +184,84 @@ class MSERDigitDetector:
             return False
     
     def detect_digits(self, frame):
-        """Detect digits in frame and return with preprocessed data"""
-        # Preprocess frame
-        processed = self.preprocess_frame(frame)
+        """Main detection function with aggressive settings"""
+        # Preprocess frame aggressively
+        processed = self.preprocess_frame_aggressive(frame)
         
-        # Scale down for faster processing
-        h, w = processed.shape
-        new_h, new_w = int(h * self.detection_scale), int(w * self.detection_scale)
-        scaled = cv2.resize(processed, (new_w, new_h))
+        all_detections = []
         
-        # Detect MSER regions
-        regions, _ = self.mser.detectRegions(scaled)
-        
-        detections = []
-        for region in regions:
-            # Get bounding box
-            x, y, w, h = cv2.boundingRect(region)
+        # Method 1: MSER detection
+        if self.use_mser:
+            # Scale down for faster processing
+            h, w = processed.shape
+            new_h, new_w = int(h * self.detection_scale), int(w * self.detection_scale)
+            scaled = cv2.resize(processed, (new_w, new_h))
             
-            # Scale back up
-            x = int(x / self.detection_scale)
-            y = int(y / self.detection_scale)
-            w = int(w / self.detection_scale)
-            h = int(h / self.detection_scale)
+            # Detect MSER regions
+            regions, _ = self.mser.detectRegions(scaled)
             
-            # Filter by size
-            if w < self.min_size or h < self.min_size or w > self.max_size or h > self.max_size:
-                continue
+            for region in regions:
+                # Get bounding box
+                x, y, w, h = cv2.boundingRect(region)
                 
-            # Filter by aspect ratio
-            aspect_ratio = w / h
-            if aspect_ratio < self.min_aspect_ratio or aspect_ratio > self.max_aspect_ratio:
-                continue
-            
-            # Calculate border weight
-            weight = self.calculate_border_weight(x, y, w, h, frame.shape)
-            if weight < self.border_weight_threshold:
-                continue
-            
-            # Calculate confidence based on region stability and border weight
-            confidence = weight * 0.7 + 0.3  # Base confidence with weight influence
-            
-            # Extract and preprocess digit for ML inference
-            digit_roi = self.extract_digit_region(frame, (x, y, w, h))
+                # Scale back up
+                x = int(x / self.detection_scale)
+                y = int(y / self.detection_scale)
+                w = int(w / self.detection_scale)
+                h = int(h / self.detection_scale)
+                
+                # Filter by size
+                if w < self.min_size or h < self.min_size or w > self.max_size or h > self.max_size:
+                    continue
+                    
+                # Filter by aspect ratio
+                aspect_ratio = w / h
+                if aspect_ratio < self.min_aspect_ratio or aspect_ratio > self.max_aspect_ratio:
+                    continue
+                
+                # Calculate border weight
+                weight = self.calculate_border_weight(x, y, w, h, frame.shape)
+                if weight < self.border_weight_threshold:
+                    continue
+                
+                # Calculate confidence
+                confidence = weight * 0.6 + 0.4
+                
+                all_detections.append({
+                    'bbox': (x, y, w, h),
+                    'confidence': confidence,
+                    'weight': weight,
+                    'method': 'mser'
+                })
+        
+        # Method 2: Contour detection
+        if self.use_contours:
+            contour_detections = self.detect_contours(processed, frame)
+            all_detections.extend(contour_detections)
+        
+        # Remove duplicates
+        filtered_detections = self.remove_duplicates(all_detections)
+        
+        # Extract and preprocess digits
+        final_detections = []
+        for det in filtered_detections:
+            # Extract digit region
+            digit_roi = self.extract_digit_region(frame, det['bbox'])
             preprocessed_digit = self.preprocess_digit(digit_roi)
             
-            detections.append({
-                'bbox': (x, y, w, h),
-                'confidence': confidence,
-                'weight': weight,
+            final_detections.append({
+                'bbox': det['bbox'],
+                'confidence': det['confidence'],
+                'weight': det['weight'],
+                'method': det.get('method', 'unknown'),
                 'digit_roi': digit_roi,
                 'preprocessed_digit': preprocessed_digit
             })
         
-        # Remove duplicates using improved NMS
-        detections = self.remove_duplicates(detections)
-        
-        return detections
+        return final_detections
     
     def remove_duplicates(self, detections):
-        """Remove duplicate detections with nested detection handling"""
+        """Remove duplicate detections with aggressive nested detection removal"""
         if not detections:
             return []
         
@@ -273,7 +302,7 @@ class MSERDigitDetector:
                     overlap_ratio = overlap_area / union_area
                     
                     # If significant overlap, keep the larger detection
-                    if overlap_ratio > 0.3:  # Reduced threshold for better filtering
+                    if overlap_ratio > 0.3:  # Lower threshold for better filtering
                         if area1 > area2:
                             # Current is larger, remove existing
                             filtered.remove(existing)
@@ -287,10 +316,10 @@ class MSERDigitDetector:
         
         return filtered
 
-class DigitDetectionCamera:
+class AggressiveDigitDetectionCamera:
     def __init__(self, stream_url="http://192.168.1.100:8080/video"):
         self.stream_url = stream_url
-        self.detector = MSERDigitDetector()
+        self.detector = AggressiveMSERDigitDetector()
         
         # Threading
         self.frame_queue = queue.Queue(maxsize=2)
@@ -300,7 +329,7 @@ class DigitDetectionCamera:
         # Detection caching
         self.latest_detections = []
         self.latest_detection_time = 0
-        self.detection_timeout = 0.5  # 500ms timeout
+        self.detection_timeout = 0.2  # Very short timeout for fast response
         
     def capture_frames(self):
         """Capture frames from camera stream"""
@@ -313,7 +342,6 @@ class DigitDetectionCamera:
                 try:
                     self.frame_queue.put_nowait(frame)
                 except queue.Full:
-                    # Remove old frame if queue is full
                     try:
                         self.frame_queue.get_nowait()
                         self.frame_queue.put_nowait(frame)
@@ -344,7 +372,6 @@ class DigitDetectionCamera:
                 try:
                     self.result_queue.put_nowait(detection_result)
                 except queue.Full:
-                    # Remove old result if queue is full
                     try:
                         self.result_queue.get_nowait()
                         self.result_queue.put_nowait(detection_result)
@@ -385,9 +412,10 @@ class DigitDetectionCamera:
         for i, det in enumerate(detections):
             x, y, w, h = det['bbox']
             confidence = det['confidence']
+            method = det.get('method', 'unknown')
             
-            # Only draw if confidence is above 0.5
-            if confidence < 0.5:
+            # Only draw if confidence is above threshold
+            if confidence < 0.5:  # Balanced threshold
                 continue
             
             # Color based on confidence
@@ -401,65 +429,51 @@ class DigitDetectionCamera:
             # Draw bounding box
             cv2.rectangle(overlay, (x, y), (x + w, y + h), color, 2)
             
-            # Draw label
-            label = f"Digit {i+1}: {confidence:.2f}"
+            # Draw label with method info
+            label = f"{method}: {confidence:.2f}"
             cv2.putText(overlay, label, (x, y - 10), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
         
         return overlay
-    
-    def start_detection(self):
-        """Start the detection system"""
-        self.running = True
-        
-        # Start threads
-        capture_thread = threading.Thread(target=self.capture_frames, daemon=True)
-        detection_thread = threading.Thread(target=self.detection_worker, daemon=True)
-        
-        capture_thread.start()
-        detection_thread.start()
-        
-        print("MSER Digit Detection Started")
-        print("Press 'q' to quit")
-        
-        try:
-            while True:
-                # Get latest frame
-                try:
-                    frame = self.frame_queue.get(timeout=1.0)
-                except queue.Empty:
-                    continue
-                
-                # Get latest detections
-                detections = self.get_latest_detections()
-                
-                # Draw overlay
-                display_frame = self.draw_detection_overlay(frame, detections)
-                
-                # Display frame
-                cv2.imshow("Digit Detection", display_frame)
-                
-                # Handle key presses
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord('q'):
-                    break
-                
-                self.frame_queue.task_done()
-                
-        except KeyboardInterrupt:
-            print("\nStopping detection...")
-        finally:
-            self.running = False
-            cv2.destroyAllWindows()
-            
-            # Wait for threads to finish
-            capture_thread.join(timeout=2)
-            detection_thread.join(timeout=2)
-    
-    def get_detection_boxes(self):
-        """Get current detection bounding boxes for external use"""
-        return self.get_latest_detections()
 
 if __name__ == "__main__":
-    camera = DigitDetectionCamera()
-    camera.start_detection()
+    camera = AggressiveDigitDetectionCamera()
+    camera.running = True
+    
+    # Start threads
+    capture_thread = threading.Thread(target=camera.capture_frames, daemon=True)
+    detection_thread = threading.Thread(target=camera.detection_worker, daemon=True)
+    
+    capture_thread.start()
+    detection_thread.start()
+    
+    print("Aggressive MSER Digit Detection Started")
+    print("Maximum sensitivity for new paper detection!")
+    print("Press 'q' to quit")
+    
+    try:
+        while True:
+            try:
+                frame = camera.frame_queue.get(timeout=1.0)
+            except queue.Empty:
+                continue
+            
+            detections = camera.get_latest_detections()
+            display_frame = camera.draw_detection_overlay(frame, detections)
+            
+            cv2.imshow("Aggressive Digit Detection", display_frame)
+            
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+            
+            camera.frame_queue.task_done()
+            
+    except KeyboardInterrupt:
+        print("\nStopping detection...")
+    finally:
+        camera.running = False
+        cv2.destroyAllWindows()
+        
+        capture_thread.join(timeout=2)
+        detection_thread.join(timeout=2)
