@@ -625,7 +625,7 @@ int main() {
     train(&nn, train_data, train_labels, test_data, test_labels);
 
     // Save the trained model weights
-    save_weights(&nn, "./cuda/trained_model_weights.bin");
+    save_weights(&nn, "../bin/trained_model_weights.bin");
     printf("Training completed and model saved!\n");
 
     free_nn_cuda(&nn);

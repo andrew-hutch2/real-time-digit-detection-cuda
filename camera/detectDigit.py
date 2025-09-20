@@ -34,6 +34,27 @@ class MSERDigitDetector:
         
         # Border weighting
         self.border_weight_threshold = 0.3
+        """self.mser = cv2.MSER_create(
+            delta=2,           # Lower for better small object detection
+            min_area=60,       # Reduced for tiny digits
+            max_area=120000,   # Increased for large digits
+            max_variation=0.3, # Lower for better stability
+            min_diversity=0.05, # Lower for more sensitive detection
+            max_evolution=200,
+            area_threshold=1.01,
+            min_margin=0.005,
+            edge_blur_size=4   # Reduced for sharper edges
+        )
+        
+        # Detection parameters
+        self.detection_scale = 0.5
+        self.min_aspect_ratio = 0.1
+        self.max_aspect_ratio = 2.5
+        self.min_size = 5
+        self.max_size = 200
+        
+        # Border weighting
+        self.border_weight_threshold = 0.3"""
         
     def preprocess_frame(self, frame):
         """Preprocessing optimized for small object detection"""
@@ -100,11 +121,40 @@ class MSERDigitDetector:
         # Resize to 28x28
         resized = cv2.resize(gray, (28, 28))
         
-        # Invert colors (MNIST has white digits on black background)
-        inverted = cv2.bitwise_not(resized)
+        # Ensure MNIST format: white digits on black background
+        # First apply binary threshold to get clean black/white
+        _, binary = cv2.threshold(resized, 127, 255, cv2.THRESH_BINARY)
         
-        # Normalize to [0, 1] range
-        normalized = inverted.astype(np.float32) / 255.0
+        # Check if we need to invert (if background is white and digits are black)
+        # Count pixels to determine which is background vs digit
+        white_pixels = np.sum(binary == 255)
+        black_pixels = np.sum(binary == 0)
+        
+        if white_pixels > black_pixels:  # More white pixels = white background with black digits
+            # Invert to get black background with white digits (MNIST format)
+            processed = cv2.bitwise_not(binary)
+        else:  # More black pixels = already black background with white digits
+            processed = binary
+        
+        # Apply MNIST-style preprocessing: fade from white to gray
+        # Convert to float for processing
+        processed_float = processed.astype(np.float32) / 255.0
+        
+        # Apply Gaussian blur to create MNIST-style fade effect
+        # This creates the characteristic white-to-gray fade around digit edges
+        blurred = cv2.GaussianBlur(processed_float, (3, 3), 0.5)
+        
+        # Enhance brightness to make digits whiter (more like MNIST)
+        # Apply contrast and brightness adjustment
+        enhanced = np.clip(blurred * 1.3, 0, 1)  # Increase brightness by 30%
+        
+        # Apply MNIST normalization: mean=0.1307, std=0.3081
+        # This matches the exact normalization used in MNIST training
+        mean, std = 0.1307, 0.3081
+        normalized = (enhanced - mean) / std
+        
+        # Clip values to reasonable range to prevent extreme outliers
+        normalized = np.clip(normalized, -3.0, 3.0)
         
         return normalized
     
@@ -112,14 +162,11 @@ class MSERDigitDetector:
         """Save preprocessed digit to binary format for CUDA inference"""
         try:
             # Flatten to 784 dimensions
+            # Note: digit_array is already normalized with MNIST normalization
             flattened = digit_array.flatten()
             
-            # Apply MNIST normalization (same as training)
-            mean, std = 0.1307, 0.3081
-            normalized = (flattened - mean) / std
-            
-            # Save as binary file
-            normalized.astype(np.float32).tofile(filename)
+            # Save as binary file (already in correct MNIST format)
+            flattened.astype(np.float32).tofile(filename)
             return True
         except Exception as e:
             print(f"Error saving digit: {e}")
@@ -240,7 +287,7 @@ class MSERDigitDetector:
         return filtered
 
 class DigitDetectionCamera:
-    def __init__(self, stream_url="http://192.168.1.200:8080/video"):
+    def __init__(self, stream_url="http://192.168.1.100:8080/video"):
         self.stream_url = stream_url
         self.detector = MSERDigitDetector()
         

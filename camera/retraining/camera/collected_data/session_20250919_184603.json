@@ -1,0 +1,27 @@
+{
+  "session_id": "20250919_184603",
+  "start_time": 1758325563.215497,
+  "end_time": 1758325650.8323636,
+  "duration": 87.61686754226685,
+  "total_samples": 24,
+  "statistics": {
+    "total_detections": 2376,
+    "accepted_samples": 24,
+    "rejected_samples": 307,
+    "session_start": 1758325563.215497,
+    "digits_collected": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0
+    }
+  },
+  "output_directory": "camera/collected_data",
+  "camera_url": "http://192.168.1.100:8080/video"
+}

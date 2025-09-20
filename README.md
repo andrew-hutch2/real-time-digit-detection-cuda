@@ -20,4 +20,32 @@ Another small thing we need to do is setup a model weight saving and loading fun
 
     The major problem that needs to be solved is creating a pipeline that can recognize numbers in webcam footage, capture them, then convert them to a 28x28 image that can be accurately predicted by the MNIST MLP.
     
-    This will be accomplished with : IMPLEMENTATION here
+    This has been accomplished with:
+    - MSER-based digit detection in `camera/detectDigit.py`
+    - Real-time camera processing pipeline
+    - Model retraining system for camera-specific data in `camera/retraining/`
+    
+## Retraining System
+
+The project includes a comprehensive retraining system that allows you to collect data from your camera and fine-tune the model for better accuracy on your specific setup:
+
+- **Data Collection**: Capture digit samples from your camera stream
+- **Interactive Labeling**: Manually label collected samples
+- **Data Validation**: Quality checks and validation
+- **Model Retraining**: Fine-tune the model with collected data
+
+See `camera/retraining/RETRAINING_GUIDE.md` for detailed instructions.
+
+### Quick Start for Retraining
+
+```bash
+# Run complete retraining workflow
+make retrain-workflow
+
+# Or run individual steps
+make collect-data      # Collect samples from camera
+make validate-data     # Validate data quality
+make label-data        # Interactive labeling
+make organize-data     # Split into train/val/test
+make retrain-model     # Retrain the model
+```

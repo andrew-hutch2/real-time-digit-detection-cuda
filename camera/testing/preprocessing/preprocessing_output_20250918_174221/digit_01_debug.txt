@@ -1,0 +1,20 @@
+Preprocessing Debug Info for Digit 1
+==========================================
+
+Original ROI shape: (170, 74, 3)
+Preprocessed shape: (28, 28)
+Preprocessed min: 0.0000
+Preprocessed max: 1.0000
+Preprocessed mean: 0.2130
+Preprocessed std: 0.4094
+
+Unique values and counts:
+  0.0000: 617 pixels
+  1.0000: 167 pixels
+
+Binary analysis:
+  Black pixels (0.0): 617
+  White pixels (1.0): 167
+  Background ratio: 78.70%
+  Digit ratio: 21.30%
+  ✅ Correct: Black background with white digits (MNIST format)

@@ -98,11 +98,26 @@ void initialize_bias_host(float *bias, int size);
 void save_weights(NeuralNetworkCUDA *nn, const char *filename);
 void load_weights(NeuralNetworkCUDA *nn, const char *filename);
 
+// Neural network management functions
+void initialize_network(NeuralNetworkCUDA *nn);
+void free_network(NeuralNetworkCUDA *nn);
+
+// Forward and backward pass functions
+void forward_pass(NeuralNetworkCUDA *nn, float *d_input, float *d_output);
+void forward_pass_batch(NeuralNetworkCUDA *nn, float *d_images, float *d_outputs, int batch_size);
+void backward_pass_batch(NeuralNetworkCUDA *nn, float *d_images, float *d_outputs, float *d_targets, int batch_size, float learning_rate);
+
+// Loss computation functions
+float compute_cross_entropy_loss(float *d_outputs, float *d_targets, int batch_size);
+float compute_loss_and_grad(int batch_size, float *h_logits, int *labels, float *h_grad);
+void update_weights(NeuralNetworkCUDA *nn, float learning_rate);
+
 // CUDA kernel declarations
 __global__ void add_noise_kernel(float *input, float *output, float *noise_std, int batch_size, int total_size);
 __global__ void bias_add_kernel(float *x, float *bias, int batch, int size);
 __global__ void relu_kernel(float *x, int total);
 __global__ void relu_backward_kernel(float *x, float *grad, int total);
 __global__ void bias_backward_kernel(float *grad, float *grad_bias, int batch, int size);
+__global__ void create_one_hot_targets(float *d_targets, int *d_labels, int batch_size, int num_classes);
 
 #endif // NEURAL_NETWORK_CUH

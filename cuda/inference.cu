@@ -212,18 +212,22 @@ void normalize_image(float *image, int size) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        printf("Usage: %s <image_file.bin>\n", argv[0]);
+    if (argc < 2 || argc > 3) {
+        printf("Usage: %s <image_file.bin> [weights_file.bin]\n", argv[0]);
         printf("Image file should contain 784 float values (28x28 flattened image)\n");
+        printf("Weights file is optional, defaults to 'trained_model_weights.bin'\n");
         printf("Example: %s test_image.bin\n", argv[0]);
+        printf("Example: %s test_image.bin retrained_model_best.bin\n", argv[0]);
         return 1;
     }
     
     InferenceNetwork nn;
     initialize_inference_network(&nn);
     
-    // Load trained weights
-    load_weights_for_inference(&nn, "trained_model_weights.bin");
+    // Load trained weights - use provided weights file or default
+    const char* weights_file = (argc == 3) ? argv[2] : "trained_model_weights.bin";
+    printf("Loading weights from: %s\n", weights_file);
+    load_weights_for_inference(&nn, weights_file);
     
     // Load and normalize input image
     float *input_image = (float*)malloc(INPUT_SIZE * sizeof(float));

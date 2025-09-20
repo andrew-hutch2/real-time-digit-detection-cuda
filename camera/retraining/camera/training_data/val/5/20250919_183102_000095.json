@@ -1,0 +1,21 @@
+{
+  "sample_id": "20250919_183102_000095",
+  "timestamp": 1758324799.9143193,
+  "bbox": [
+    1036,
+    210,
+    42,
+    60
+  ],
+  "preprocessed_shape": [
+    28,
+    28
+  ],
+  "digit_file": "preprocessed/20250919_183102_000095.bin",
+  "raw_file": "raw_samples/20250919_183102_000095.jpg",
+  "label": 5,
+  "confidence": null,
+  "preprocessed_file": "camera/collected_data/preprocessed/20250919_183102_000095.bin",
+  "labeling_timestamp": "2025-09-19T18:40:43.626704",
+  "labeling_confidence": 1.0
+}
