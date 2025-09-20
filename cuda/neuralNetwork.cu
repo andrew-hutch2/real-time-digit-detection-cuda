@@ -341,16 +341,28 @@ void backward_pass_batch(NeuralNetworkCUDA *nn, float *d_images, float *d_output
     CUDA_CHECK(cudaDeviceSynchronize());
 }
 
-// Update weights (separate function like train2.cu)
+// Update weights with L2 regularization (weight decay)
 void update_weights(NeuralNetworkCUDA *nn, float learning_rate) {
     float neg_lr = -learning_rate;
+    float weight_decay_lr = -learning_rate * WEIGHT_DECAY;
     
+    // Update weights with gradients and weight decay
     CUBLAS_CHECK(cublasSaxpy(nn->cublas_handle, INPUT_SIZE * HIDDEN_SIZE1,
                            &neg_lr, nn->d_grad_weights1, 1, nn->d_weights1, 1));
+    CUBLAS_CHECK(cublasSaxpy(nn->cublas_handle, INPUT_SIZE * HIDDEN_SIZE1,
+                           &weight_decay_lr, nn->d_weights1, 1, nn->d_weights1, 1));
+    
     CUBLAS_CHECK(cublasSaxpy(nn->cublas_handle, HIDDEN_SIZE1 * HIDDEN_SIZE2,
                            &neg_lr, nn->d_grad_weights2, 1, nn->d_weights2, 1));
+    CUBLAS_CHECK(cublasSaxpy(nn->cublas_handle, HIDDEN_SIZE1 * HIDDEN_SIZE2,
+                           &weight_decay_lr, nn->d_weights2, 1, nn->d_weights2, 1));
+    
     CUBLAS_CHECK(cublasSaxpy(nn->cublas_handle, HIDDEN_SIZE2 * OUTPUT_SIZE,
                            &neg_lr, nn->d_grad_weights3, 1, nn->d_weights3, 1));
+    CUBLAS_CHECK(cublasSaxpy(nn->cublas_handle, HIDDEN_SIZE2 * OUTPUT_SIZE,
+                           &weight_decay_lr, nn->d_weights3, 1, nn->d_weights3, 1));
+    
+    // Update biases (no weight decay for biases)
     CUBLAS_CHECK(cublasSaxpy(nn->cublas_handle, HIDDEN_SIZE1,
                            &neg_lr, nn->d_grad_bias1, 1, nn->d_bias1, 1));
     CUBLAS_CHECK(cublasSaxpy(nn->cublas_handle, HIDDEN_SIZE2,

@@ -1,8 +1,16 @@
 #include "neuralNetwork.cuh"
 #include <dirent.h>
 #include <sys/stat.h>
+#include <math.h>
 
 // === RETRAINING FUNCTIONS ===
+
+// Learning rate schedule function (step decay for better generalization)
+float get_learning_rate(int epoch, float initial_lr, int total_epochs) {
+    // Step decay: reduce LR by factor of 0.5 every 10 epochs
+    float lr = initial_lr * powf(0.5f, epoch / 10.0f);
+    return fmaxf(lr, 0.0001f); // Minimum learning rate
+}
 
 typedef struct {
     float *images;
@@ -193,6 +201,50 @@ float evaluate_model(NeuralNetworkCUDA *nn, Dataset *val_dataset) {
     return (float)correct / val_dataset->count;
 }
 
+float evaluate_validation_loss(NeuralNetworkCUDA *nn, Dataset *val_dataset) {
+    if (val_dataset->count == 0) return 0.0f;
+    
+    float total_loss = 0.0f;
+    float *d_input = NULL;
+    float *d_output = NULL;
+    
+    CUDA_CHECK(cudaMalloc(&d_input, INPUT_SIZE * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_output, OUTPUT_SIZE * sizeof(float)));
+    
+    for (int i = 0; i < val_dataset->count; i++) {
+        // Copy input to device
+        CUDA_CHECK(cudaMemcpy(d_input, &val_dataset->images[i * INPUT_SIZE], 
+                             INPUT_SIZE * sizeof(float), cudaMemcpyHostToDevice));
+        
+        // Forward pass
+        forward_pass(nn, d_input, d_output);
+        
+        // Copy output to host
+        float *h_output = (float*)malloc(OUTPUT_SIZE * sizeof(float));
+        CUDA_CHECK(cudaMemcpy(h_output, d_output, OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost));
+        
+        // Compute loss for this sample
+        int label = val_dataset->labels[i];
+        float max_logit = -INFINITY;
+        for (int j = 0; j < OUTPUT_SIZE; j++) {
+            if (h_output[j] > max_logit) max_logit = h_output[j];
+        }
+        float sum_exp = 0.0f;
+        for (int j = 0; j < OUTPUT_SIZE; j++) {
+            sum_exp += expf(h_output[j] - max_logit);
+        }
+        float sample_loss = -(h_output[label] - max_logit - logf(sum_exp));
+        total_loss += sample_loss;
+        
+        free(h_output);
+    }
+    
+    cudaFree(d_input);
+    cudaFree(d_output);
+    
+    return total_loss / val_dataset->count;
+}
+
 void retrain_model(NeuralNetworkCUDA *nn, Dataset *train_dataset, Dataset *val_dataset, 
                    int epochs, float learning_rate, const char* base_weights_file) {
     
@@ -222,11 +274,16 @@ void retrain_model(NeuralNetworkCUDA *nn, Dataset *train_dataset, Dataset *val_d
     
     // Training loop
     float best_val_accuracy = 0.0f;
-    int patience = 10;  // Early stopping patience
+    float best_val_loss = INFINITY;
+    int patience = 15;  // Reduced patience for better generalization
     int patience_counter = 0;
     
     for (int epoch = 0; epoch < epochs; epoch++) {
+        // Calculate current learning rate using cosine annealing
+        float current_lr = get_learning_rate(epoch, learning_rate, epochs);
+        
         printf("\nEpoch %d/%d\n", epoch + 1, epochs);
+        printf("Learning rate: %.6f\n", current_lr);
         
         // Process data in batches
         int num_batches = (train_dataset->count + BATCH_SIZE - 1) / BATCH_SIZE;  // Ceiling division
@@ -264,10 +321,10 @@ void retrain_model(NeuralNetworkCUDA *nn, Dataset *train_dataset, Dataset *val_d
             CUDA_CHECK(cudaMemcpy(nn->d_grad_output, h_grad, batch_size * OUTPUT_SIZE * sizeof(float), cudaMemcpyHostToDevice));
             
             // Backward pass
-            backward_pass_batch(nn, d_images, d_outputs, d_targets, batch_size, learning_rate);
+            backward_pass_batch(nn, d_images, d_outputs, d_targets, batch_size, current_lr);
             
             // Update weights
-            update_weights(nn, learning_rate);
+            update_weights(nn, current_lr);
             
             // Clean up host memory
             free(h_outputs);
@@ -279,36 +336,31 @@ void retrain_model(NeuralNetworkCUDA *nn, Dataset *train_dataset, Dataset *val_d
         
         // Evaluate on validation set
         float val_accuracy = 0.0f;
+        float val_loss = 0.0f;
         if (val_dataset->count > 0) {
             val_accuracy = evaluate_model(nn, val_dataset);
-            printf("Validation accuracy: %.4f\n", val_accuracy);
+            val_loss = evaluate_validation_loss(nn, val_dataset);
+            printf("Validation accuracy: %.4f, Validation loss: %.6f\n", val_accuracy, val_loss);
             
-            // Early stopping
-            if (val_accuracy > best_val_accuracy) {
+            // Early stopping based on validation loss (better for generalization)
+            if (val_loss < best_val_loss) {
+                best_val_loss = val_loss;
                 best_val_accuracy = val_accuracy;
                 patience_counter = 0;
                 
                 // Save best model
                 save_weights(nn, "retrained_model_best.bin");
-                printf("New best model saved!\n");
+                printf("New best model saved! (val_loss: %.6f)\n", val_loss);
             } else {
                 patience_counter++;
                 if (patience_counter >= patience) {
-                    printf("Early stopping triggered (patience: %d)\n", patience);
+                    printf("Early stopping triggered (patience: %d, val_loss not improving)\n", patience);
                     break;
                 }
             }
         }
         
         printf("Training loss: %.6f\n", loss);
-        
-        // Save checkpoint every 10 epochs
-        if ((epoch + 1) % 10 == 0) {
-            char checkpoint_name[256];
-            snprintf(checkpoint_name, sizeof(checkpoint_name), "retrained_model_epoch_%d.bin", epoch + 1);
-            save_weights(nn, checkpoint_name);
-            printf("Checkpoint saved: %s\n", checkpoint_name);
-        }
     }
     
     // Clean up device memory
@@ -325,14 +377,14 @@ void retrain_model(NeuralNetworkCUDA *nn, Dataset *train_dataset, Dataset *val_d
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         printf("Usage: %s <training_data_dir> [base_weights_file] [epochs] [learning_rate]\n", argv[0]);
-        printf("Example: %s ../camera/training_data trained_model_weights.bin 50 0.001\n", argv[0]);
+        printf("Example: %s ../camera/retraining/data trained_model_weights.bin 50 0.001\n", argv[0]);
         return 1;
     }
     
     const char* data_dir = argv[1];
     const char* base_weights = (argc > 2) ? argv[2] : NULL;
     int epochs = (argc > 3) ? atoi(argv[3]) : 50;
-    float learning_rate = (argc > 4) ? atof(argv[4]) : 0.001f;
+    float learning_rate = (argc > 4) ? atof(argv[4]) : 0.0005f;  // Lower initial LR for better generalization
     
     // Initialize neural network
     NeuralNetworkCUDA nn;

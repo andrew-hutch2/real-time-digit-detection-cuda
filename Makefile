@@ -76,34 +76,34 @@ test-camera: $(INFERENCE_EXEC)
 # Data collection workflow
 collect-data:
 	@echo "Starting data collection workflow..."
-	$(MAKE) -C camera/retraining collect-data
+	$(MAKE) -C camera/retraining/scripts collect-data
 
 # Complete retraining workflow
 retrain-workflow:
 	@echo "Starting complete retraining workflow..."
-	$(MAKE) -C camera/retraining retrain-workflow
+	$(MAKE) -C camera/retraining/scripts retrain-workflow
 
 # Individual workflow steps
 validate-data:
 	@echo "Validating collected data..."
-	$(MAKE) -C camera/retraining validate-data
+	$(MAKE) -C camera/retraining/scripts validate-data
 
 label-data:
 	@echo "Starting data labeling interface..."
-	$(MAKE) -C camera/retraining label-data
+	$(MAKE) -C camera/retraining/scripts label-data
 
 organize-data:
 	@echo "Organizing data into train/val/test splits..."
-	$(MAKE) -C camera/retraining organize-data
+	$(MAKE) -C camera/retraining/scripts organize-data
 
 retrain-model: $(RETRAIN_EXEC)
 	@echo "Retraining model with collected data..."
-	$(MAKE) -C camera/retraining retrain-model
+	$(MAKE) -C camera/retraining/scripts retrain-model
 
 # Workflow status
 workflow-status:
 	@echo "Checking workflow status..."
-	$(MAKE) -C camera/retraining workflow-status
+	$(MAKE) -C camera/retraining/scripts workflow-status
 
 # Help
 help:

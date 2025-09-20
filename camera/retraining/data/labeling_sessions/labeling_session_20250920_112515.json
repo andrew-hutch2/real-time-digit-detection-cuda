@@ -1,0 +1,20 @@
+{
+  "session_id": "20250920_112515",
+  "start_time": "2025-09-20T11:24:49.758976",
+  "end_time": "2025-09-20T11:25:15.229874",
+  "total_samples": 16,
+  "labeled_samples": 9,
+  "digit_counts": {
+    "0": 0,
+    "1": 9,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "7": 0,
+    "8": 0,
+    "9": 0
+  },
+  "data_directory": "camera/collected_data"
+}

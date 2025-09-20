@@ -13,7 +13,7 @@ import queue
 class MSERDigitDetector:
     def __init__(self):
         # MSER parameters optimized for small objects
-        self.mser = cv2.MSER_create(
+        """self.mser = cv2.MSER_create(
             delta=3,           # Lower for better small object detection
             min_area=80,       # Reduced for tiny digits
             max_area=120000,   # Increased for large digits
@@ -30,11 +30,13 @@ class MSERDigitDetector:
         self.min_aspect_ratio = 0.15
         self.max_aspect_ratio = 2.5
         self.min_size = 15
-        self.max_size = 200
+        self.max_size = 200"""
         
         # Border weighting
         self.border_weight_threshold = 0.3
-        """self.mser = cv2.MSER_create(
+
+
+        self.mser = cv2.MSER_create(
             delta=2,           # Lower for better small object detection
             min_area=60,       # Reduced for tiny digits
             max_area=120000,   # Increased for large digits
@@ -49,12 +51,12 @@ class MSERDigitDetector:
         # Detection parameters
         self.detection_scale = 0.5
         self.min_aspect_ratio = 0.1
-        self.max_aspect_ratio = 2.5
+        self.max_aspect_ratio = 400
         self.min_size = 5
         self.max_size = 200
         
         # Border weighting
-        self.border_weight_threshold = 0.3"""
+        self.border_weight_threshold = 0.3
         
     def preprocess_frame(self, frame):
         """Preprocessing optimized for small object detection"""

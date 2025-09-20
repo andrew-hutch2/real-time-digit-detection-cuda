@@ -1,0 +1,35 @@
+{
+  "total_samples": 666,
+  "valid_samples": 661,
+  "invalid_samples": 5,
+  "issues": {
+    "invalid_raw_dimensions": [
+      "20250919_192050_000013: 6x58",
+      "20250919_192050_000027: 6x58",
+      "20250919_192050_000019: 6x58",
+      "20250919_192050_000006: 6x58",
+      "20250920_110927_000080: 8x72"
+    ]
+  },
+  "digit_distribution": {
+    "8": 26,
+    "4": 26,
+    "6": 26,
+    "1": 22,
+    "9": 26,
+    "7": 26,
+    "5": 23,
+    "3": 26,
+    "2": 26,
+    "0": 24
+  },
+  "quality_metrics": {
+    "validity_rate": 0.9924924924924925,
+    "total_samples": 666,
+    "valid_samples": 661,
+    "invalid_samples": 5,
+    "digit_coverage": 10,
+    "min_samples_per_digit": 22,
+    "max_samples_per_digit": 26
+  }
+}
