@@ -23,6 +23,19 @@ To create a system for recognizing real handwritten digits in real-time from Ope
 - **Real-Time Processing**: Optimized pipeline for live camera feed processing
 - **Model Integration**: Seamless integration with the CUDA neural network for predictions
 
+## 🎬 Demo Videos
+
+See the system in action:
+
+
+https://github.com/user-attachments/assets/045e8b9a-2a98-4316-91e5-86caf4e21cd8
+
+
+https://github.com/user-attachments/assets/1f5abb35-ef3f-4ba7-a602-5fded76a2d3f
+
+
+https://github.com/user-attachments/assets/a5dbb7c6-4f08-472d-b004-9e2b540f48f3
+
 ## 🚀 Key Features
 
 ### High-Performance CUDA Implementation
@@ -193,18 +206,6 @@ python3 camera.py
 - **Reset Capability**: Manual ('r' key) and automatic reset functionality
 - **Performance Monitoring**: Real-time FPS and accuracy metrics
 
-## 🎬 Demo Videos
-
-See the system in action:
-
-
-https://github.com/user-attachments/assets/045e8b9a-2a98-4316-91e5-86caf4e21cd8
-
-
-https://github.com/user-attachments/assets/1f5abb35-ef3f-4ba7-a602-5fded76a2d3f
-
-
-https://github.com/user-attachments/assets/a5dbb7c6-4f08-472d-b004-9e2b540f48f3
 
 ## 🎮 Controls
 
