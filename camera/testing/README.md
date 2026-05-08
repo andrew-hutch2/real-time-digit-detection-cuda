@@ -2,7 +2,7 @@
 
 This directory contains organized testing tools for digit detection and preprocessing analysis.
 
-## 📁 Directory Structure
+## Directory structure
 
 ```
 testing/
@@ -13,15 +13,15 @@ testing/
 └── README.md               # This file
 ```
 
-## 🎯 MSER Detection System
+## MSER detection system
 
 ### Why MSER (Maximally Stable Extremal Regions)?
 After testing multiple contour-based approaches, we chose MSER because it:
-- ✅ **Finds stable regions** that remain consistent across different thresholds
-- ✅ **Resists noise** from shadows, paper edges, and background variations  
-- ✅ **Handles borders intelligently** by devaluing regions near screen edges
-- ✅ **Works consistently** under varying lighting conditions
-- ✅ **Eliminates false positives** from irrelevant edges
+- **Finds stable regions** that remain consistent across different thresholds
+- **Resists noise** from shadows, paper edges, and background variations  
+- **Handles borders** by devaluing regions near screen edges
+- **Works consistently** under varying lighting conditions
+- **Reduces false positives** from irrelevant edges
 
 ### Key Features
 - **Border Weight Mask** - Prioritizes center regions over edge regions
@@ -29,11 +29,11 @@ After testing multiple contour-based approaches, we chose MSER because it:
 - **Smart Filtering** - Combines geometric constraints with border weighting
 - **Step-by-step Visualization** - Shows each processing stage for debugging
 
-## 📂 Scripts by Category
+## Scripts by Category
 
-### 🔍 MSER Detection (`mser_detection/`)
+### MSER detection (`mser_detection/`)
 
-#### 1. mser_preprocessing_visualizer.py ⭐ **RECOMMENDED**
+#### 1. `mser_preprocessing_visualizer.py` (recommended)
 
 **MSER-based digit detection with step-by-step visualization - the current best approach.**
 
@@ -86,7 +86,7 @@ python3 mser_digit_detector.py <image_file>
 
 **Standalone MSER detection implementations with different speed/accuracy tradeoffs.**
 
-### ⚡ Real-time Detection (`realtime_detection/`)
+### Real-time detection (`realtime_detection/`)
 
 Contains threaded real-time detection implementations:
 - `realtime_mser_threaded.py` - Basic threaded MSER detection
@@ -97,9 +97,9 @@ Contains threaded real-time detection implementations:
 - `realtime_mser_fast_threaded4.py` - Most recent version
 - `realtime_mser_accurate_threaded.py` - Prioritizes accuracy over speed
 
-### 🔬 Preprocessing Analysis (`preprocessing/`)
+### Preprocessing analysis (`preprocessing/`)
 
-#### preprocessing_visualizer.py ⭐ **NEW - INFERENCE DEBUGGING**
+#### `preprocessing_visualizer.py` (inference debugging)
 
 **Captures and visualizes preprocessed digits before inference to debug preprocessing issues.**
 
@@ -141,31 +141,31 @@ preprocessing_output_20241201_143022/
 └── ...
 ```
 
-### 🗂️ Legacy (`legacy/`)
+### Legacy (`legacy/`)
 
 Contains experimental and legacy scripts for reference and comparison.
 
-## 🎯 Quick Start
+## Quick start
 
-### For MSER Detection (Best Results):
+### For MSER detection (best results)
 ```bash
 cd mser_detection
 python3 mser_preprocessing_visualizer.py
 ```
 
-### For Preprocessing Debugging:
+### For preprocessing debugging
 ```bash
 cd preprocessing
 python preprocessing_visualizer.py
 ```
 
-### For Real-time Performance:
+### For real-time performance
 ```bash
 cd realtime_detection
 python3 realtime_mser_fast_threaded4.py
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### MSER Parameters (in `mser_digit_detector.py`)
 ```python
@@ -185,7 +185,7 @@ self.center_weight = 1.0
 self.border_weight = 0.3  # Much lower weight for border regions
 ```
 
-## 🎛️ Tuning Tips
+## Tuning tips
 
 ### For Better Detection
 1. **Adjust MSER parameters** if detecting too many/few regions
@@ -198,7 +198,7 @@ self.border_weight = 0.3  # Much lower weight for border regions
 - **720p**: Reduce `min_area` and `max_area` by ~50%
 - **4K**: Increase `min_area` and `max_area` by ~200%
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Too Many False Positives
 - Increase `min_area` and `max_area`
